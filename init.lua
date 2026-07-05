@@ -254,8 +254,8 @@ vim.pack.add({
 	"https://github.com/obsidian-nvim/obsidian.nvim",
 	"https://github.com/mrcjkb/rustaceanvim",
 	"https://github.com/christoomey/vim-tmux-navigator",
-  "https://github.com/sainnhe/gruvbox-material",
-  "https://github.com/kdheepak/lazygit.nvim",
+	"https://github.com/sainnhe/gruvbox-material",
+	"https://github.com/kdheepak/lazygit.nvim",
 })
 
 vim.g.gruvbox_material_background = "medium"
@@ -319,33 +319,26 @@ end
 setup_treesitter()
 
 local function get_notes_path()
-  local os_release = vim.fn.system("cat /etc/os-release")
-  if os_release:match("Fedora Linux") then
-    return vim.fn.expand("~/core")
-  elseif os_release:match("Ubuntu") then
-    return "/mnt/c/Users/Rad/Documents/Notes"
-  else
-    error("Unsupported OS: no notes path configured")
-  end
+	return vim.fn.expand("~/core")
 end
 
 local function setup_obsidian()
-  require("obsidian").setup({
-    legacy_commands = false,
-    workspaces = { { name = "Notes", path = get_notes_path() } },
-    picker = { name = "fzf-lua" },
-  })
+	require("obsidian").setup({
+		legacy_commands = false,
+		workspaces = { { name = "Notes", path = get_notes_path() } },
+		picker = { name = "fzf-lua" },
+	})
 
-  vim.keymap.set("n", "<leader>nn", function()
-    vim.cmd("Obsidian workspace")
-    vim.defer_fn(function()
-      vim.cmd("Obsidian new")
-    end, 500)
-  end, { desc = "New note" })
-  vim.keymap.set("n", "<leader>nf", "<cmd>Obsidian quick_switch<cr>", { desc = "Find note" })
-  vim.keymap.set("n", "<leader>ns", "<cmd>Obsidian search<cr>",       { desc = "Search notes" })
-  vim.keymap.set("n", "<leader>nt", "<cmd>Obsidian today<cr>",        { desc = "Today's daily note" })
-  vim.keymap.set("n", "<leader>nw", "<cmd>Obsidian workspace<cr>",    { desc = "Switch workspace" })
+	vim.keymap.set("n", "<leader>nn", function()
+		vim.cmd("Obsidian workspace")
+		vim.defer_fn(function()
+			vim.cmd("Obsidian new")
+		end, 500)
+	end, { desc = "New note" })
+	vim.keymap.set("n", "<leader>nf", "<cmd>Obsidian quick_switch<cr>", { desc = "Find note" })
+	vim.keymap.set("n", "<leader>ns", "<cmd>Obsidian search<cr>", { desc = "Search notes" })
+	vim.keymap.set("n", "<leader>nt", "<cmd>Obsidian today<cr>", { desc = "Today's daily note" })
+	vim.keymap.set("n", "<leader>nw", "<cmd>Obsidian workspace<cr>", { desc = "Switch workspace" })
 end
 
 setup_obsidian()
