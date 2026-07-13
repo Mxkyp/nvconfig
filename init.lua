@@ -256,6 +256,10 @@ vim.pack.add({
 	"https://github.com/christoomey/vim-tmux-navigator",
 	"https://github.com/sainnhe/gruvbox-material",
 	"https://github.com/kdheepak/lazygit.nvim",
+	{
+		src = "https://github.com/iamcco/markdown-preview.nvim",
+		build = "cd app && npm install",
+	},
 })
 
 vim.g.gruvbox_material_background = "medium"
@@ -342,6 +346,10 @@ local function setup_obsidian()
 end
 
 setup_obsidian()
+
+-- Markdown Preview
+vim.keymap.set("n", "<leader>lv", "<cmd>MarkdownPreviewToggle<cr>", { desc = "Toggle Markdown Preview" })
+
 
 require("nvim-tree").setup({
 	view = {
