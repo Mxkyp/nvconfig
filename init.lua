@@ -166,7 +166,7 @@ require('gitsigns').setup({
         vim.cmd.normal({']c', bang = true})
       else
         gitsigns.nav_hunk('next')
-
+ 	    end
     end, { desc = "Next git hunk" })
 
     map('n', '[h', function()
