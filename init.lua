@@ -127,6 +127,10 @@ vim.pack.add({
 		build = "cd app && npm install",
 	},
 	"https://github.com/lervag/vimtex",
+  "https://github.com/Saghen/blink.cmp",
+  "https://github.com/L3MON4D3/LuaSnip",
+  "https://github.com/rafamadriz/friendly-snippets",
+  "https://github.com/lewis6991/gitsigns.nvim"
 })
 
 vim.g.gruvbox_material_background = "medium"
@@ -137,6 +141,53 @@ vim.cmd.colorscheme("gruvbox-material")
 -- ============================================================================
 -- PLUGIN CONFIGS
 -- ============================================================================
+
+require('gitsigns').setup({
+  signs = {
+    add          = { text = '┃' },
+    change       = { text = '┃' },
+    delete       = { text = '_' },
+    topdelete    = { text = '‾' },
+    changedelete = { text = '~' },
+    untracked    = { text = '┆' },
+  },
+  on_attach = function(bufnr)
+    local gitsigns = require('gitsigns')
+
+    local function map(mode, l, r, opts)
+      opts = opts or {}
+      opts.buffer = bufnr
+      vim.keymap.set(mode, l, r, opts)
+    end
+
+    -- Navigation
+    map('n', ']h', function()
+      if vim.wo.diff then
+        vim.cmd.normal({']c', bang = true})
+      else
+        gitsigns.nav_hunk('next')
+
+    end, { desc = "Next git hunk" })
+
+    map('n', '[h', function()
+      if vim.wo.diff then
+        vim.cmd.normal({'[c', bang = true})
+      else
+        gitsigns.nav_hunk('prev')
+      end
+    end, { desc = "Previous git hunk" })
+
+    -- Actions
+    map('n', '<leader>hs', gitsigns.stage_hunk, { desc = "Stage hunk" })
+    map('n', '<leader>hr', gitsigns.reset_hunk, { desc = "Reset hunk" })
+    map('n', '<leader>hu', gitsigns.undo_stage_hunk, { desc = "Undo stage hunk" })
+    map('n', '<leader>hp', gitsigns.preview_hunk, { desc = "Preview hunk" })
+    map('n', '<leader>hb', function() gitsigns.blame_line{full=true} end, { desc = "Blame line" })
+    map('n', '<leader>hd', gitsigns.diffthis, { desc = "Diff against index" })
+    map('n', '<leader>hD', function() gitsigns.diffthis('~') end, { desc = "Diff against last commit" })
+
+  end
+})
 
 local setup_treesitter = function()
 	local treesitter = require("nvim-treesitter")
@@ -259,3 +310,123 @@ end, { desc = "FZF Diagnostics Document" })
 vim.keymap.set("n", "<leader>fX", function()
 	require("fzf-lua").diagnostics_workspace()
 end, { desc = "FZF Diagnostics Workspace" })
+
+-- ============================================================================
+-- LSP 
+-- ============================================================================
+require("luasnip.loaders.from_vscode").lazy_load()
+
+-- 2. Configure Blink
+require("blink.cmp").setup({
+  keymap = { 
+    preset = 'default',
+    
+    -- Navigate DOWN the completion list
+    ['<C-j>'] = { 'select_next', 'fallback' },
+    -- Navigate UP the completion list
+    ['<C-k>'] = { 'select_prev', 'fallback' },
+    
+    -- Trigger completion and toggle the documentation window
+    ['<C-space>'] = { 'show', 'show_documentation', 'hide_documentation' },
+    -- Accept the highlighted completion
+    ['<CR>'] = { 'accept', 'fallback' },
+  },
+  
+  completion = {
+    ghost_text = { enabled = true },
+
+    documentation = {
+      auto_show = true,
+      auto_show_delay_ms = 200, -- Small delay so it doesn't flash too fast
+    },
+  },
+
+  -- Tell Blink to use LuaSnip as its snippet engine
+  snippets = {
+    preset = 'luasnip',
+  },
+
+  sources = {
+    default = { 'lsp', 'path', 'snippets', 'buffer' },
+  },
+  
+  signature = { enabled = true } 
+})
+
+local capabilities = require("blink.cmp").get_lsp_capabilities()
+
+-- Pro-tip from the Astral team (specifically for Linux users):
+-- Enable dynamic registration so `ty` correctly watches newly created files
+capabilities.workspace = capabilities.workspace or {}
+capabilities.workspace.didChangeWatchedFiles = capabilities.workspace.didChangeWatchedFiles or {}
+capabilities.workspace.didChangeWatchedFiles.dynamicRegistration = true
+
+
+vim.lsp.config('ty', {
+  cmd = { "ty", "server" },
+  capabilities = capabilities,
+  settings = {
+    ty = {
+      diagnosticMode = "workspace",
+    }
+  }
+})
+
+
+vim.lsp.config('ruff', {
+  cmd = { "ruff", "server" },
+  capabilities = capabilities,
+  on_attach = function(client, bufnr)
+
+    client.server_capabilities.hoverProvider = false
+  end,
+})
+
+
+vim.lsp.enable('ty')
+vim.lsp.enable('ruff')
+
+-- ============================================================================
+-- AUTO-FORMAT ON SAVE
+-- ============================================================================
+vim.api.nvim_create_autocmd("LspAttach", {
+  group = vim.api.nvim_create_augroup("lsp_attach_format", { clear = true }),
+  callback = function(args)
+    local client = vim.lsp.get_client_by_id(args.data.client_id)
+    
+    if client and client.name == "ruff" then
+      vim.api.nvim_create_autocmd("BufWritePre", {
+        buffer = args.buf,
+        callback = function()
+          vim.lsp.buf.code_action({
+            context = { only = { "source.organizeImports" } },
+            apply = true,
+          })
+          vim.lsp.buf.format({ async = false, id = client.id })
+        end,
+      })
+    end
+  end,
+})
+
+-- ============================================================================
+-- LSP KEYMAPS (Space Leader)
+-- ============================================================================
+vim.api.nvim_create_autocmd("LspAttach", {
+  group = vim.api.nvim_create_augroup("lsp_attach_keymaps", { clear = true }),
+  callback = function(args)
+    local opts = { buffer = args.buf, silent = true }
+
+    vim.keymap.set('n', 'gd', vim.lsp.buf.definition, vim.tbl_extend("force", opts, { desc = "Go to Definition" }))
+    vim.keymap.set('n', 'gD', vim.lsp.buf.declaration, vim.tbl_extend("force", opts, { desc = "Go to Declaration" }))
+    vim.keymap.set('n', 'gr', vim.lsp.buf.references, vim.tbl_extend("force", opts, { desc = "Go to References" }))
+    vim.keymap.set('n', 'gi', vim.lsp.buf.implementation, vim.tbl_extend("force", opts, { desc = "Go to Implementation" }))
+    
+    vim.keymap.set('n', 'K', vim.lsp.buf.hover, vim.tbl_extend("force", opts, { desc = "Hover Documentation" }))
+
+    vim.keymap.set('n', '<leader>rn', vim.lsp.buf.rename, vim.tbl_extend("force", opts, { desc = "Rename Symbol" }))
+    vim.keymap.set({ 'n', 'v' }, '<leader>ca', vim.lsp.buf.code_action, vim.tbl_extend("force", opts, { desc = "Code Action" }))
+    
+    vim.keymap.set('n', '<leader>d', vim.diagnostic.open_float, vim.tbl_extend("force", opts, { desc = "Line Diagnostics" }))
+  end,
+})
